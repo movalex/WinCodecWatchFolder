@@ -16,6 +16,7 @@ ACTIONS = {
 FILE_LIST_DIRECTORY = 0x0001
 
 path_to_watch = "."
+ACCEPTED_FOLDER = 'DV Watch folder'
 hDir = win32file.CreateFile (
   path_to_watch,
   FILE_LIST_DIRECTORY,
@@ -26,10 +27,8 @@ hDir = win32file.CreateFile (
   None
 )
 
-
-def move_path(file_path, move_folder):
-    parent = file_path.parent
-    dest_folder = parent / move_folder
+def move_path(parent_folder, move_folder):
+    dest_folder = parent_folder / move_folder
     Path.mkdir(dest_folder, exist_ok = True)
     return dest_folder
 
@@ -45,23 +44,13 @@ while 1:
     hDir,
     1024,
     False, # bWatchSubtree
-     # win32con.FILE_NOTIFY_CHANGE_FILE_NAME |
-     # win32con.FILE_NOTIFY_CHANGE_DIR_NAME |
-     # win32con.FILE_NOTIFY_CHANGE_ATTRIBUTES |
-     # win32con.FILE_NOTIFY_CHANGE_SIZE |
      win32con.FILE_NOTIFY_CHANGE_LAST_WRITE,
-     # win32con.FILE_NOTIFY_CHANGE_SECURITY
     None,
     None
   )
   for action, file in results:
     full_filename = Path(path_to_watch) / file
-    # parent = full_filename.parent
-    # dest_accepted = parent / 'Accepted'
-    # dest_rejected = parent / 'Rejected'
-    # Path.mkdir(dest_accepted, exist_ok = True)
-    # Path.mkdir(dest_rejected, exist_ok = True)
-    # print(ACTIONS.get (action, "Unknown"), full_filename)
+    parent_folder = full_filename.parent
     ext = full_filename.suffix
     if ext == '.avi':
         try:
@@ -70,11 +59,10 @@ while 1:
             if codec_tag and codec_tag == 'dvsd':
                 print(f'codec {codec_tag} accepted')
                 try:
-                    dest_file = move_path(full_filename, 'Accepted') / file
-                    # dest_accepted / full_filename.name
-                    # print('dest file - ', dest_file)
+                    # dest_file = move_path(full_filename, 'Accepted') / file
+                    dest_file = parent_folder / ACCEPTED_FOLDER / file
                     if dest_file.exists():
-                        print('file exist in accepted folder')
+                        print('file already exist in accepted folder')
                     else:
                         Path(full_filename).rename(dest_file)
                 except Exception:
@@ -84,7 +72,7 @@ while 1:
             else:
                 print(f'codec {codec_tag} rejected')
                 try:
-                    dest_file = move_path(full_filename, 'Rejected') / file
+                    dest_file = move_path(parent_folder, 'Rejected') / file
                     if dest_file.exists():
                         print('file already exists in rejected folder')
                     else:
