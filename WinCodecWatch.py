@@ -15,8 +15,9 @@ ACTIONS = {
 # Thanks to Claudio Grondi for the correct set of numbers
 FILE_LIST_DIRECTORY = 0x0001
 
-path_to_watch = "."
-ACCEPTED_FOLDER = 'DV Watch folder'
+# path_to_watch = "."
+path_to_watch = r".\watch_folder"
+# ACCEPTED_FOLDER = r"\\HIRESFILESERVER\HiResStorage2\DV Watch Folder for Import"
 hDir = win32file.CreateFile (
   path_to_watch,
   FILE_LIST_DIRECTORY,
@@ -44,7 +45,8 @@ while 1:
     hDir,
     1024,
     False, # bWatchSubtree
-     win32con.FILE_NOTIFY_CHANGE_LAST_WRITE,
+      win32con.FILE_NOTIFY_CHANGE_LAST_WRITE |
+      win32con.FILE_NOTIFY_CHANGE_FILE_NAME,
     None,
     None
   )
@@ -54,32 +56,31 @@ while 1:
     ext = full_filename.suffix
     if ext == '.avi':
         try:
-            metadata = FFProbe(file)
+            metadata = FFProbe(str(full_filename))
             codec_tag = metadata.streams[0].codec_tag_string
             if codec_tag and codec_tag == 'dvsd':
                 print(f'codec {codec_tag} accepted')
-                try:
-                    # dest_file = move_path(full_filename, 'Accepted') / file
-                    dest_file = parent_folder / ACCEPTED_FOLDER / file
-                    if dest_file.exists():
-                        print('file already exist in accepted folder')
-                    else:
-                        Path(full_filename).rename(dest_file)
-                except Exception:
-                    raise
-                finally:
+                dest_file = move_path(parent_folder, 'Accepted') / file
+                # dest_file = ACCEPTED_FOLDER / file
+                if dest_file.exists():
+                    print('file already exist in accepted folder')
                     full_filename.unlink()
+                else:
+                    try:
+                        Path(full_filename).rename(dest_file)
+                    except Exception:
+                        print(Exception)
             else:
                 print(f'codec {codec_tag} rejected')
                 try:
                     dest_file = move_path(parent_folder, 'Rejected') / file
                     if dest_file.exists():
                         print('file already exists in rejected folder')
+                        full_filename.unlink()
                     else:
                         Path(full_filename).rename(dest_file)
                 except Exception:
                     raise
-                finally:
-                    full_filename.unlink()
         except OSError:
             pass # ffprobe catch error
+

@@ -1,1 +1,2 @@
 ffprobe-python==1.0.3
+pywin32==227
