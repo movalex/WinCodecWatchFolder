@@ -4,6 +4,7 @@ from pathlib import Path
 from ffprobe import FFProbe
 import win32file
 import win32con
+import time
 
 ACTIONS = {
   1 : "Created",
@@ -46,7 +47,9 @@ while 1:
     1024,
     False, # bWatchSubtree
       win32con.FILE_NOTIFY_CHANGE_LAST_WRITE |
-      win32con.FILE_NOTIFY_CHANGE_FILE_NAME,
+      win32con.FILE_NOTIFY_CHANGE_SIZE |
+      win32con.FILE_NOTIFY_CHANGE_FILE_NAME |
+      win32con.FILE_NOTIFY_CHANGE_ATTRIBUTES,
     None,
     None
   )
@@ -57,30 +60,35 @@ while 1:
     if ext == '.avi':
         try:
             metadata = FFProbe(str(full_filename))
-            codec_tag = metadata.streams[0].codec_tag_string
-            if codec_tag and codec_tag == 'dvsd':
-                print(f'codec {codec_tag} accepted')
-                dest_file = move_path(parent_folder, 'Accepted') / file
-                # dest_file = ACCEPTED_FOLDER / file
-                if dest_file.exists():
-                    print('file already exist in accepted folder')
-                    full_filename.unlink()
-                else:
-                    try:
-                        Path(full_filename).rename(dest_file)
-                    except Exception:
-                        print(Exception)
+            if not metadata.video[0].duration:
+                continue
             else:
-                print(f'codec {codec_tag} rejected')
-                try:
-                    dest_file = move_path(parent_folder, 'Rejected') / file
+                codec_tag = metadata.streams[0].codec_tag_string
+                if codec_tag and codec_tag == 'dvsd':
+                    print(f'codec {codec_tag} accepted')
+                    dest_file = move_path(parent_folder, 'Accepted') / file
+                    # dest_file = ACCEPTED_FOLDER / file
                     if dest_file.exists():
-                        print('file already exists in rejected folder')
+                        print('file already exist in accepted folder')
                         full_filename.unlink()
                     else:
-                        Path(full_filename).rename(dest_file)
-                except Exception:
-                    raise
-        except OSError:
-            pass # ffprobe catch error
+                        try:
+                            Path(full_filename).rename(dest_file)
+                        except Exception:
+                            raise
+                else:
+                    print(f'codec {codec_tag} rejected')
+                    try:
+                        dest_file = move_path(parent_folder, 'Rejected') / file
+                        if dest_file.exists():
+                            print('file already exists in rejected folder')
+                            full_filename.unlink()
+                        else:
+                            Path(full_filename).rename(dest_file)
+                    except Exception:
+                        raise
+        except OSError as e:
+            pass # suppress ffprobe no media file error
+        except IndexError:
+            print('no DV codec tag found, the file is copying')
 
