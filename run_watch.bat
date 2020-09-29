@@ -1,1 +1,1 @@
-C:\Windows\py.exe "C:\Users\abogomolov\Documents\github\WinCodecWF\WinCodecWatch.py" pause
+C:\Windows\py.exe ".\WinCodecWatch.py" pause
