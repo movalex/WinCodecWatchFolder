@@ -15,10 +15,15 @@ path_to_watch = r".\watch_folder"
 # ACCEPTED_FOLDER = r"\\NAS3016A_ARTIST\artist\АРТИСТ\RU\Л\ЛОЛИТА\СУБТИТРЫ"
 
 
-def move_path(parent_folder, move_folder):
+def get_destination_folder(parent_folder, move_folder):
     dest_folder = parent_folder / move_folder
     Path.mkdir(dest_folder, exist_ok=True)
     return dest_folder
+
+
+def move_file(codec_tag, filename, folder=None):
+    print(f"codec {codec_tag} {folder.lower()}!")
+    pass
 
 
 def process(filename):
@@ -26,41 +31,42 @@ def process(filename):
         metadata = FFProbe(str(filename))
         codec_tag = metadata.streams[0].codec_tag_string
         if codec_tag and codec_tag == "dvsd":
-            print(f"codec {codec_tag} accepted")
-            dest_file = move_path(filename.parent, "Accepted") / filename.name
+            move_file(codec_tag, filename, folder="Accepted")
+            dest_file = (
+                get_destination_folder(filename.parent, "Accepted") / filename.name
+            )
             # dest_file = os.path.join(ACCEPTED_FOLDER, filename.name)
             if dest_file.exists():
-                print('file already exist in accepted folder')
+                print("file already exist in accepted folder")
                 Path(filename).replace(dest_file)
             else:
                 Path(filename).rename(dest_file)
         else:
             print(f"codec {codec_tag} rejected")
-            dest_file = move_path(filename.parent, "Rejected") / filename.name
+            dest_file = (
+                get_destination_folder(filename.parent, "Rejected") / filename.name
+            )
             if dest_file.exists():
-                print("file already exists in rejected folder")
-                filename.unlink()
+                print("file already exists in rejected folder, replacing file")
+                Path(filename).replace(dest_file)
             else:
                 Path(filename).rename(dest_file)
     except IndexError as e:
         print("index error", e)
-    except OSError as e:
-        pass
     except Exception as e:
         print("other error during process", e)
         raise
 
 
 def convert_bytes(num):
-    """convert os.stat(file).st_size
-    to MB, GB etc"""
+    """convert os.stat(file).st_size to MB, GB etc"""
     for i in ["bytes", "KB", "MB", "GB", "TB"]:
         if num < 1024:
             return f"{num:.2f} {i}"
         num /= 1024
 
 
-def run_watchfolder():
+def run_watchfolder(path_to_watch):
     hDir = win32file.CreateFile(
         path_to_watch,
         FILE_LIST_DIRECTORY,
@@ -73,12 +79,12 @@ def run_watchfolder():
         None,
     )
     while 1:
-        #
+
         # ReadDirectoryChangesW takes a previously-created
         # handle to a directory, a buffer size for results,
         # a flag to indicate whether to watch subtrees and
         # a filter of what changes to notify.
-        #
+
         results = win32file.ReadDirectoryChangesW(
             hDir,
             2048,
@@ -91,39 +97,39 @@ def run_watchfolder():
             None,
         )
         for action, file in results:
-            try:
-                full_filename = Path(path_to_watch) / file
-                ext = full_filename.suffix
-                if ext == ".avi":
-                    while True:
-                        try:
-                            new_path = str(full_filename) + "_"
-                            os.rename(str(full_filename), new_path)
-                            if not new_path:
-                                time.sleep(0.1)
-                                break
-                            os.rename(new_path, str(full_filename))
-                            file_size = convert_bytes(
-                                os.stat(str(full_filename)).st_size
-                            )
-                            print(
-                                f"\nfile {file} is found, size: {file_size}"
-                                "\nprocessing now..."
-                            )
-                            process(full_filename)
+            if action == 1:
+                print(f"{ACTIONS.get(action)} {file}")
+            full_filename = Path(path_to_watch) / file
+            ext = full_filename.suffix
+            if ext == ".avi":
+                # check if file is accessible (not being copied at the moment)
+                while True:
+                    try:
+                        new_path = str(full_filename) + "_"
+                        os.rename(str(full_filename), new_path)
+                        if not new_path:
                             break
-                        except OSError as e:
-                            if e.winerror != 32:
-                                break
-                            else:
-                                print(".", end=" ")
-                                time.sleep(0.5)
-                        except IndexError as e:
-                            print("index error!", e)
-            except (FileNotFoundError):
-                print("file not found, sleeping for 5 sec")
-                # time.sleep(5)
+                        os.rename(new_path, str(full_filename))
+                        file_size = convert_bytes(os.stat(str(full_filename)).st_size)
+                        print(
+                            f"\nfile {file} is found, size: {file_size}"
+                            "\nprocessing now..."
+                        )
+                        process(full_filename)
+                        break
+                    except OSError as e:
+                        if e.winerror != 32:
+                            break
+                        time.sleep(.5)
+                    except Exception as e:
+                        print('unhandled error')
+                        raise
 
 
 if __name__ == "__main__":
-    run_watchfolder()
+    for file in os.listdir(path_to_watch):
+        filename = Path(path_to_watch) / file
+        if filename.is_file and filename.suffix.lower() == ".avi":
+            print(f"processing {filename.name}")
+            process(filename)
+    run_watchfolder(path_to_watch)
