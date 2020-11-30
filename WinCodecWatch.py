@@ -97,7 +97,7 @@ def run_watchfolder(path_to_watch):
             None,
         )
         for action, file in results:
-            if action == 1:
+            if action == 2:
                 print(f"{ACTIONS.get(action)} {file}")
             full_filename = Path(path_to_watch) / file
             ext = full_filename.suffix
@@ -120,9 +120,9 @@ def run_watchfolder(path_to_watch):
                     except OSError as e:
                         if e.winerror != 32:
                             break
-                        time.sleep(.5)
+                        time.sleep(0.5)
                     except Exception as e:
-                        print('unhandled error')
+                        print("unhandled error")
                         raise
 
 
