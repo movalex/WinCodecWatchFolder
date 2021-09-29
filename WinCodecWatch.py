@@ -12,7 +12,6 @@ FILE_LIST_DIRECTORY = 0x0001
 # path_to_watch = "."
 path_to_watch = r".\watch_folder"
 # ACCEPTED_FOLDER = r"\\HIRESFILESERVER\HiResStorage2\DV Watch Folder for Import"
-# ACCEPTED_FOLDER = r"\\NAS3016A_ARTIST\artist\АРТИСТ\RU\Л\ЛОЛИТА\СУБТИТРЫ"
 
 
 def get_destination_folder(parent_folder, move_folder):
